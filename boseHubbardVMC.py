@@ -170,10 +170,12 @@ def main():
     #U = 0                      # v = 0.0000, V = 1.0000
     #U = 0.05000000000000       # v = 0.0145, V = 1.0091
     #U = 0.51164649614037       # v = 0.1121, V = 1.0404
-    #U = 5.11646496140377       # v = 0.7991, V = 0.6819
+    U = 5.11646496140377       # v = 0.7991, V = 0.6819
     #U = 51.16464961403775      # v = 3.2310, V = 0.085
-    U = 199.05358527674870     #v = 4.6000,  V = 0.0081
+    #U = 199.05358527674870     #v = 4.6000,  V = 0.0081
+    U = 0.25
     
+    #U = 199.05358527674870
     mu = 0
 
     #Observables
@@ -182,8 +184,6 @@ def main():
     #Initialize a random BoseHubbard configuration
     x = random_boson_config(L,N)
     x = np.array([1,1,1,1])
-    x = np.array([2,0,2,0])
-    #x = np.array([0,2,0])
 
 
     #print(x_old)
@@ -198,17 +198,17 @@ def main():
    #     x = vmc(x,v)
         
     # Write ground state energies to disk as a function of variational parameter
-    M = 15000
+    M = 11000
     #Apply M steps of VMC to the configuration
     
     Egs = [] #Store ground state energies
-    vList = np.linspace(1.5,5.5,400) #List of variational params to be tested
+    vList = np.linspace(0,1.5,400) #List of variational params to be tested
     for v in vList:
         sweeps = 0                   #Count the number of times the loop is entered
         energy = 0
         for m in range(M):
             x = vmc(x,v)
-            if m > 0.5*M: #Only measure statistics after equilibration
+            if m > 0.1*M: #Only measure statistics after equilibration
                 sweeps+=1
                 energy += (bh_kinetic(x,t,v) + bh_potential(x,U,mu))
                 #print(energy/(sweeps))
