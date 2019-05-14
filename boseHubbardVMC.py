@@ -198,12 +198,12 @@ def main():
    #     x = vmc(x,v)
 
     # Write ground state energies to disk as a function of variational parameter
-    M = 11000
+    M = 11500
     #Apply M steps of VMC to the configuration
 
     Egs = [] #Store ground state energies
     #vList = np.linspace(0,1.5,400) #List of variational params to be tested
-    vList = np.linspace(2,6,1200) #List of variational params to be tested
+    vList = np.linspace(0,3,1000) #List of variational params to be tested
     for v in vList:
         sweeps = 0                   #Count the number of times the loop is entered
         energy = 0
