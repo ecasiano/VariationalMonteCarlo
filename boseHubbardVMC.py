@@ -157,6 +157,16 @@ def bh_potential(x,U,mu):
     # Need to set a bin size
     # FIND THE LOCAL MINIMA FOR VARIOUS U VALUES
 '''------------------------------------------------------------------------'''
+def get_binned_error(mc_data):
+    '''Get the standard error in mc_data and return neighbor averaged data.'''
+    N_bins = mc_data.size
+    delta = np.std(mc_data)/np.sqrt(N_bins)     #Standard error
+    
+    start_bin = N_bins % 2
+    binned_mc_data = 0.5*(mc_data[start_bin::2]+mc_data[start_bin+1::2]) #Averages (A0,A1), (A2,A3), + ... A0 ignored if odd data
+   
+    return delta,binned_mc_data
+'''------------------------------------------------------------------------'''
 
 def main():
 

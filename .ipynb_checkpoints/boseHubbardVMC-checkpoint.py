@@ -51,21 +51,21 @@ def random_boson_config(L,N):
 
 def vmc(x,v):
     '''Applies a step of Variational Monte Carlo'''
-    
+
     # Length of initial configuration
-    L = np.size(x)  
-    
+    L = np.size(x)
+
     # Randomly select and move particle from site l to site k
     l = np.random.randint(L)
     k = np.random.randint(L)
-    
+
         # Particle numbers on sites l and k before updates (will need later for fast computation of ratio of overlaps)
     n_l = x[l]
-    n_k = x[k] 
-    
+    n_k = x[k]
+
     x[l] -= 1
     x[k] += 1
-    
+
     # Reject the update if site l was vacant.
     if x[l] == -1:
         x[l] += 1
@@ -83,7 +83,7 @@ def vmc(x,v):
 
     #Weight
     w = np.abs(w_non_interacting*w_jastrow)**2
-    
+
     # Metropolis sampling
     if w >= 1:
         # Accept update
@@ -114,7 +114,7 @@ def bh_kinetic(x,t,v):
     #Loop for bdag_i*b_j
     for i in range(L):
         j = (i+1)%(L) #Neighboring site with PBC taken into account
-        
+
         #Store particle number in i,j before acting with creation/anihilation operators
         #print("HEY!!!", x)
         n_i = x[i]
@@ -126,7 +126,7 @@ def bh_kinetic(x,t,v):
     #Loop for b_i*bdag_j
     for i in range(L):
         j = (i+1)%(L) #Neighboring site with PBC taken into account
-            
+
         #Store particle number in i,j before acting with creation/anihilation operators
         n_i = x[i]
         n_j = x[j]
@@ -146,7 +146,7 @@ def bh_potential(x,U,mu):
     potentialEnergy = 0
     for i in range(L):
         n_i = x[i] #particle number on i_th site
-        
+
         potentialEnergy += (U/2)*(n_i*(n_i-1)) - mu*n_i
 
     return potentialEnergy
@@ -155,14 +155,24 @@ def bh_potential(x,U,mu):
 
     # Store the number of bins (rows: mc steps (one per L update attempts) , columns: energy?)
     # Need to set a bin size
-    # FIND THE LOCAL MINIMA FOR VARIOUS U VALUES 
+    # FIND THE LOCAL MINIMA FOR VARIOUS U VALUES
+'''------------------------------------------------------------------------'''
+def get_binned_error(mc_data):
+    '''Get the standard error in mc_data and return neighbor averaged data.'''
+    N_bins = mc_data.size
+    delta = np.std(mc_data)/np.sqrt(N_bins)     #Standard error
+    
+    start_bin = N_bins % 2
+    binned_mc_data = 0.5*(mc_data[start_bin::2]+mc_data[start_bin+1::2]) #Averages (A0,A1), (A2,A3), + ... A0 ignored if odd data
+   
+    return delta,binned_mc_data
 '''------------------------------------------------------------------------'''
 
 def main():
 
     #Variational parameters
     #v = 0.7991
-    
+
     #Bose-Hubbard parameters
     L = 4
     N = 4
@@ -170,11 +180,11 @@ def main():
     #U = 0                      # v = 0.0000, V = 1.0000
     #U = 0.05000000000000       # v = 0.0145, V = 1.0091
     #U = 0.51164649614037       # v = 0.1121, V = 1.0404
-    U = 5.11646496140377       # v = 0.7991, V = 0.6819
+    #U = 5.11646496140377       # v = 0.7991, V = 0.6819
     #U = 51.16464961403775      # v = 3.2310, V = 0.085
     #U = 199.05358527674870     #v = 4.6000,  V = 0.0081
-    U = 0.25
-    
+    U = 9.97631157484440
+
     #U = 199.05358527674870
     mu = 0
 
@@ -196,13 +206,14 @@ def main():
    #     if m%2000==0:
    #         print(energy/(m+1))
    #     x = vmc(x,v)
-        
+
     # Write ground state energies to disk as a function of variational parameter
-    M = 11000
+    M = 11500
     #Apply M steps of VMC to the configuration
-    
+
     Egs = [] #Store ground state energies
-    vList = np.linspace(0,1.5,400) #List of variational params to be tested
+    #vList = np.linspace(0,1.5,400) #List of variational params to be tested
+    vList = np.linspace(0,3,1000) #List of variational params to be tested
     for v in vList:
         sweeps = 0                   #Count the number of times the loop is entered
         energy = 0
@@ -214,13 +225,13 @@ def main():
                 #print(energy/(sweeps))
                 x = vmc(x,v)
         Egs.append(energy/sweeps)
-    
+
     #Format the data file
     columns = np.array((vList,Egs))
     columns = columns.T
     with open("EGS_%d_%d_%.4f.dat"%(L,N,U),"w+") as data:
         np.savetxt(data,columns,delimiter="   ",fmt="%.4f",header="v      Egs     L=%d,N=%d,U=%.14f"%(L,N,U))
-    
+
 
 if __name__ == "__main__":
     main()

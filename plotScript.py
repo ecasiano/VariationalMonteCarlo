@@ -66,4 +66,9 @@ ax1.set_xlabel(r"$v$")
 ax1.set_xlim(data16b[:,0][0],data16b[:,0][-1])
 ax1.set_ylim(-2,6)
 plt.legend(ncol=2,title=r"$U$")
-plt.savefig('groundStatesVariousParams_U9.9763.pdf')
+
+#Find minimum Egs
+min_idx = np.argmin(data16b[:,1])
+print("v_min: %f"%(data16b[:,0][min_idx]))
+print("Minimum energy: %f"%(data16b[:,1][min_idx]))
+#plt.savefig('groundStatesVariousParams_U9.9763.pdf')
