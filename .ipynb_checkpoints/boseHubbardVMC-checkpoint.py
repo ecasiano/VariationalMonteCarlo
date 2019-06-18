@@ -4,8 +4,7 @@
 import numpy as np
 from sympy.utilities.iterables import multiset_permutations,ordered_partitions
 import matplotlib.pyplot as plt
-
-# Main function
+import argparse
 
 # Function definitions
 
@@ -116,7 +115,6 @@ def bh_kinetic(x,t,v):
         j = (i+1)%(L) #Neighboring site with PBC taken into account
 
         #Store particle number in i,j before acting with creation/anihilation operators
-        #print("HEY!!!", x)
         n_i = x[i]
         n_j = x[j]
 
@@ -134,7 +132,7 @@ def bh_kinetic(x,t,v):
         #Add to energy
         kineticSum += np.sqrt(n_i)*np.sqrt(n_j+1) * np.sqrt(n_i/(n_j+1)) * np.exp(-v*(n_j-n_i+1))
 
-    return -kineticSum
+    return -t*kineticSum
 
 '''------------------------------------------------------------------------'''
 
@@ -157,81 +155,101 @@ def bh_potential(x,U,mu):
     # Need to set a bin size
     # FIND THE LOCAL MINIMA FOR VARIOUS U VALUES
 '''------------------------------------------------------------------------'''
-def get_binned_error(mc_data):
-    '''Get the standard error in mc_data and return neighbor averaged data.'''
-    N_bins = mc_data.size
-    delta = np.std(mc_data)/np.sqrt(N_bins)     #Standard error
+
+def correlation_function(x,r):
+    '''Calculate the correlation function for a BoseHubbard configuration x and site distance r'''
+    L = np.size(x)
+    C = 0             #Initialize correlation function
+    for i in range(L):
+        j = (i+r)%(L) #Site at distance r with PBC taken into account
+        C += x[i]*x[j]
+    C  = C/L #Average over lattice sites
     
-    start_bin = N_bins % 2
-    binned_mc_data = 0.5*(mc_data[start_bin::2]+mc_data[start_bin+1::2]) #Averages (A0,A1), (A2,A3), + ... A0 ignored if odd data
-   
-    return delta,binned_mc_data
+    return C
+        
 '''------------------------------------------------------------------------'''
 
+# Main function
 def main():
+    
+    # Command line arguments
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument("L", help="Number of sites in the Bose-Hubbard lattice",
+                        type=int)
+    parser.add_argument("N", help="Number of bosons",
+                        type=int)
+    parser.add_argument("U", help="Interaction strength (actually U/t with t=1)",
+                        type=float)   
+    parser.add_argument("v", help="Variational parameter",
+                        type=float)    
+    parser.add_argument("M", help="Number of Monte Carlo steps (default: M = 1E+05)",
+                        type=int)    
+    parser.add_argument("--t", help="Hopping parameter (default: t = q)",
+                        type=float)
+    parser.add_argument("--mu", help="Chemical potential (default: mu = 0)",
+                        type=float)
 
-    #Variational parameters
-    #v = 0.7991
 
-    #Bose-Hubbard parameters
-    L = 4
-    N = 4
-    t = 1.0
+    args = parser.parse_args()
+    
+    #Bose-Hubbard parameters    
     #U = 0                      # v = 0.0000, V = 1.0000
     #U = 0.05000000000000       # v = 0.0145, V = 1.0091
     #U = 0.51164649614037       # v = 0.1121, V = 1.0404
     #U = 5.11646496140377       # v = 0.7991, V = 0.6819
     #U = 51.16464961403775      # v = 3.2310, V = 0.085
     #U = 199.05358527674870     #v = 4.6000,  V = 0.0081
-    U = 9.97631157484440
-
-    #U = 199.05358527674870
-    mu = 0
-
+    #U = 9.97631157484440
+    
+    #Positional parameters
+    L = args.L
+    N = args.N
+    U = args.U
+    v = args.v
+    M = args.M
+    
+    #Optional parameters
+    if args.mu: mu = args.mu
+    else: mu = 0              # Default value
+    if args.t: t = args.t
+    else: t = 1       
+    
     #Observables
     energy = 0
 
-    #Initialize a random BoseHubbard configuration
-    x = random_boson_config(L,N)
-    x = np.array([1,1,1,1])
+    #Initialize a BoseHubbard configuration
+    #x = random_boson_config(L,N)
+    x = np.zeros(L)
+    x[0] = N
 
-
-    #print(x_old)
-
-   # M = 10
-    #Apply M steps of VMC to the configuration
-   # for m in range(M):
-   #     energy += (bh_kinetic(x,t,v) + bh_potential(x,U,mu))
-        #print(energy)
-   #     if m%2000==0:
-   #         print(energy/(m+1))
-   #     x = vmc(x,v)
-
-    # Write ground state energies to disk as a function of variational parameter
-    M = 11500
-    #Apply M steps of VMC to the configuration
-
-    Egs = [] #Store ground state energies
-    #vList = np.linspace(0,1.5,400) #List of variational params to be tested
-    vList = np.linspace(0,3,1000) #List of variational params to be tested
-    for v in vList:
-        sweeps = 0                   #Count the number of times the loop is entered
-        energy = 0
-        for m in range(M):
-            x = vmc(x,v)
-            if m > 0.1*M: #Only measure statistics after equilibration
-                sweeps+=1
-                energy += (bh_kinetic(x,t,v) + bh_potential(x,U,mu))
-                #print(energy/(sweeps))
-                x = vmc(x,v)
-        Egs.append(energy/sweeps)
-
-    #Format the data file
-    columns = np.array((vList,Egs))
-    columns = columns.T
-    with open("EGS_%d_%d_%.4f.dat"%(L,N,U),"w+") as data:
-        np.savetxt(data,columns,delimiter="   ",fmt="%.4f",header="v      Egs     L=%d,N=%d,U=%.14f"%(L,N,U))
-
-
+    #Write ground state energies to disk as a function of MC_step
+    egs = [] #Store ground state energies
+    
+    #Write density-density correlation function for all r as a function of MC_step
+    ddc = []
+    
+    #Do M*N accept/reject steps ; calculate observables every N accept/reject steps (1 MC step)
+    for m in range(M):
+        energy = (bh_kinetic(x,t,v) + bh_potential(x,U,mu))
+        egs.append(energy)
+        ddc_r = []  #Store correlation function of each r @ each MC_step
+        for r in range(L):
+            ddc_r.append(correlation_function(x,r))
+        ddc.append(ddc_r)
+        #print(x)
+        for n in range(N): #NOTE: An MC Step will be defined as N accept/reject steps
+            x = vmc(x,v)   #Accept/reject new configuration
+            
+    #Format the ground state energy data file
+    egs = np.array(egs)  # --> not writing M_list anymore but left this as an example of 2d-array writing to file.
+    with open("egs_%i_%i_%.4f_%.4f_%i.dat"%(L,N,U,v,M),"w+") as data:
+        np.savetxt(data,egs,delimiter=",",fmt="%.16f",header="MC_step Egs // BH Parameters: L=%d,N=%d,U=%.14f,v=%.14f,MC_steps=%i"%(L,N,U,v,M))
+               
+    #Density-density correlation function file
+    ddc = np.array(ddc) #Promote ddc list to np.array so np.hstack() can be used
+    with open("ddc_%i_%i_%.4f_%.4f_%i.dat"%(L,N,U,v,M),"w+") as data:
+        np.savetxt(data,ddc,delimiter=" ",fmt="%.16f",header="BH Parameters: L=%d,N=%d,U=%.14f,v=%.14f,MC_steps=%i \nrows: MC_step, cols: r=[0,1,2,...,L-1]"%(L,N,U,v,M))
+    
 if __name__ == "__main__":
     main()
