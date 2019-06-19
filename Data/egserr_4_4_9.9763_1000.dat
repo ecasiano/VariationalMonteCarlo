@@ -1,7 +1,0 @@
-# rows: mc_step columns: distance between sites (r=0,1,2,...) // 
-# BH Parameters: L=4,N=4,U=9.9763,MC_steps=1000 (800 after equilibration) 
-0.0429332898171001
-0.0464661916374459
-0.0499996361194899
-0.0471714780967845
-0.0492595103547932
